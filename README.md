@@ -1,6 +1,6 @@
-# DBMS ASSESSMENT – 9
+# DBMS ASSESSMENT – 10
 ## JDBC CONNECTIVITY – FRAUD MANAGEMENT SYSTEM (Backend + Frontend)
-**Name / Reg. No.:** Nikitha Bharath / 25BCE2517  **Dataset:** Fraud Management Data Model (8 tables)
+**Name / Reg. No.:** Nikitha Bharath / 25BCE2517  **Dataset:** Fraud Management Data Model (12 tables)
 
 ---
 
