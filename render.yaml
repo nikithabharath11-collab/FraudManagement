@@ -1,0 +1,14 @@
+# Render settings for the Fraud Management System
+services:
+  - type: web
+    name: fraudmgmt
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: FRAUD_DB_PASS
+        generateValue: true
+      - key: ORDER_DB_PASS
+        generateValue: true

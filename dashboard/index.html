@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fraud Management System</title>
+<style>
+:root{--bg:#f5f6fa;--card:#fff;--ink:#1d2433;--mute:#667085;--line:#e3e6ee;--acc:#1f4e8c}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;background:var(--acc);color:#fff}
+h1{font-size:18px;margin:0}h2{font-size:15px;margin:22px 0 8px}
+.badge{padding:3px 12px;border-radius:99px;font-size:12px;background:#ffffff33}.badge.ok{background:#2e7d4f}.badge.bad{background:#c0392b}
+nav{display:flex;flex-wrap:wrap;gap:4px;padding:10px 24px;background:var(--card);border-bottom:1px solid var(--line)}
+nav button{border:0;background:none;padding:6px 12px;border-radius:6px;cursor:pointer;color:var(--mute);font:inherit}
+nav button.on{background:var(--acc);color:#fff}
+main{padding:8px 24px 40px;max-width:1200px;margin:auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}.card b{display:block;font-size:26px}.card span{color:var(--mute);text-transform:capitalize}
+.scroll{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%}th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}th{font-size:12px;text-transform:uppercase;color:var(--mute)}
+form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;align-items:end}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mute);gap:3px}
+input,select{padding:7px;border:1px solid var(--line);border-radius:6px;font:inherit;color:var(--ink);background:#fff}
+form button{padding:8px;border:0;border-radius:6px;background:var(--acc);color:#fff;cursor:pointer;font:inherit}
+.tag{padding:2px 9px;border-radius:99px;font-size:12px}.r{background:#fde8e6;color:#c0392b}.a{background:#fdf1d8;color:#9a6a12}.g{background:#e1f3e8;color:#2e7d4f}
+#msg{margin:12px 24px 0;padding:9px 14px;border-radius:8px;display:none}#msg.ok{display:block;background:#e1f3e8;color:#2e7d4f}#msg.bad{display:block;background:#fde8e6;color:#c0392b}
+</style></head><body>
+<header><h1>Fraud Management System</h1><span id="status" class="badge">Connecting…</span></header>
+<nav id="nav"></nav><div id="msg"></div><main id="view"></main>
+<footer style="padding:14px 24px;font-size:12px;color:var(--mute)">Nikitha Bharath, 25BCE2517</footer>
+<script>
+const TABS={dashboard:'Dashboard',transactions:'Transactions',alerts:'Fraud Alerts',customers:'Customers',accounts:'Accounts',devices:'Devices',merchants:'Merchants',rules:'Rules',logs:'Activity Log',risk:'Risk Summary',riskscores:'Risk Scores',statements:'Monthly Statements'};
+const TAG={High:'r',Blocked:'r','Confirmed Fraud':'r',Medium:'a',Open:'a','Under Review':'a',Suspended:'a',Frozen:'a',Low:'g',Cleared:'g',Completed:'g',Active:'g'};
+const TAGCOLS=['severity','alert_status','status','standing','risk_level'];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,body){
+  const r=await fetch('/api/'+path,body?{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)}:{});
+  const d=await r.json(); if(!r.ok) throw new Error(d.error||'Request failed'); return d;
+}
+function toast(t,bad){const m=$('#msg');m.textContent=t;m.className=bad?'bad':'ok';setTimeout(()=>m.className='',5000)}
+function cell(k,v){if(v==null)return '–';const s=esc(v);return TAGCOLS.includes(k)&&TAG[v]?`<span class="tag ${TAG[v]}">${s}</span>`:s}
+function table(rows){
+  if(!rows.length)return '<p>No rows.</p>';const k=Object.keys(rows[0]);
+  return '<div class="scroll"><table><tr>'+k.map(x=>`<th>${x.replace(/_/g,' ')}</th>`).join('')+'</tr>'+rows.map(r=>'<tr>'+k.map(x=>`<td>${cell(x,r[x])}</td>`).join('')+'</tr>').join('')+'</table></div>';
+}
+const opts=(rows,k,l)=>rows.map(r=>`<option value="${esc(r[k])}">${esc(r[k])} — ${esc(r[l])}</option>`).join('');
+const sel=(n,h)=>`<select name="${n}" required>${h}</select>`;
+const fld=(l,h)=>`<label>${l}${h}</label>`;
+const list=a=>a.map(x=>`<option>${x}</option>`).join('');
+
+async function show(t){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  let h='';
+  try{
+    const sum=(await api('summary'))[0]; $('#status').textContent='JDBC connected · MySQL'; $('#status').className='badge ok';
+    if(t==='dashboard'){
+      h='<div class="cards">'+Object.entries(sum).map(([k,v])=>`<div class="card"><b>${v}</b><span>${k.replace(/_/g,' ')}</span></div>`).join('')+'</div><h2>Fraud alerts</h2>'+table(await api('alerts'));
+    }else if(t==='transactions'){
+      const [ac,dv,me,tx]=await Promise.all(['accounts','devices','merchants','transactions'].map(x=>api(x)));
+      h=`<h2>New transaction (rules run automatically)</h2><form data-a="transactions">`+
+        fld('From account',sel('account',opts(ac,'account_number','account_label')))+fld('Device',sel('device',opts(dv,'device_ref','device_name')))+
+        fld('Merchant',sel('merchant',opts(me,'merchant_ref','merchant_name')))+fld('Kind',sel('kind',list(['Purchase','Transfer','Withdrawal'])))+
+        fld('Amount (INR)','<input name="amount" type="number" min="1" step="0.01" required>')+fld('Location','<input name="location" placeholder="Chennai, IN">')+
+        fld('Simulate hour (0-23, optional)','<input name="hour" type="number" min="0" max="23" placeholder="e.g. 2">')+`<button>Submit</button></form><h2>Transactions</h2>`+table(tx);
+    }else if(t==='alerts'){
+      const [al,cu]=await Promise.all([api('alerts'),api('customers')]);
+      const open=al.filter(a=>a.alert_status==='Open').map(a=>({alert_ref:a.alert_ref,label:a.txn_ref+' · '+a.rule_name}));
+      h=`<h2>Review an alert</h2><form data-a="alerts/review">`+fld('Open alert',sel('alert',opts(open,'alert_ref','label')))+
+        fld('Decision',sel('status',list(['Cleared','Confirmed Fraud'])))+fld('Reviewer (admins)',sel('reviewer',opts(cu.filter(c=>c.access_level==='Administrator'),'customer_number','full_name')))+
+        fld('Notes','<input name="notes" required>')+`<button>Save review</button></form><h2>All alerts</h2>`+table(al);
+    }else if(t==='customers'){
+      const cu=await api('customers');
+      h=`<h2>Add customer</h2><form data-a="customers/add">`+fld('Name','<input name="name" required>')+fld('Email','<input name="email" type="email" required>')+
+        fld('Access level',sel('level',list(['Standard','Administrator'])))+`<button>Add</button></form>
+        <h2>Update standing</h2><form data-a="customers/standing">`+fld('Customer',sel('customer',opts(cu,'customer_number','full_name')))+fld('Standing',sel('standing',list(['Active','Suspended'])))+`<button>Update</button></form>
+        <h2>Delete customer</h2><form data-a="customers/delete">`+fld('Customer',sel('customer',opts(cu,'customer_number','full_name')))+`<button>Delete</button></form><h2>Customers</h2>`+table(cu);
+    }else h=`<h2>${TABS[t]}</h2>`+table(await api(t));
+  }catch(e){ $('#status').textContent='Database unreachable'; $('#status').className='badge bad'; h='<p>'+esc(e.message)+'</p>'; }
+  $('#view').innerHTML=h;
+  document.querySelectorAll('form[data-a]').forEach(f=>f.addEventListener('submit',async e=>{
+    e.preventDefault();
+    try{const r=await api(f.dataset.a,Object.fromEntries(new FormData(f)));
+      toast(r.txn?`${r.txn}: ${r.status}, ${r.alerts} alert(s) raised`:'Saved');show(t);}
+    catch(err){toast(err.message,true)}
+  }));
+}
+$('#nav').innerHTML=Object.entries(TABS).map(([k,v])=>`<button data-t="${k}">${v}</button>`).join('');
+$('#nav').addEventListener('click',e=>e.target.dataset.t&&show(e.target.dataset.t));
+show('dashboard');
+</script></body></html>

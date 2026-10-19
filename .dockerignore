@@ -1,0 +1,5 @@
+# not needed inside the image
+.git
+*.class
+jdbc_driver/*.jar
+orders/connector/*.jar
